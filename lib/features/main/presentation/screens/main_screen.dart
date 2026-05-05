@@ -8,6 +8,7 @@ import '../../../map/presentation/widgets/hud_bottom_nav_bar.dart';
 import '../../../map/presentation/widgets/circular_start_button.dart';
 import '../../../workout/presentation/screens/active_workout_screen.dart';
 import '../../../workout/application/workout_controller.dart';
+import '../../../../core/domain/models/workout_session.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -33,6 +34,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   Future<void> _startWorkout() async {
+    final workoutState = ref.read(workoutControllerProvider).state;
+    
+    // If there's an active session, just resume the screen
+    if (workoutState == WorkoutState.running || workoutState == WorkoutState.paused) {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ActiveWorkoutScreen()),
+      );
+      return;
+    }
+
     ref.read(workoutControllerProvider.notifier).start();
     if (!mounted) return;
     Navigator.push(
@@ -58,9 +71,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             right: 0,
             child: Align(
               alignment: Alignment.bottomCenter,
-              child: CircularStartButton(
-                onPressed: _startWorkout,
-                isVisible: _currentIndex == 0,
+              child: Consumer(
+                builder: (context, ref, child) {
+                  final workoutState = ref.watch(workoutControllerProvider).state;
+                  final isActive = workoutState == WorkoutState.running || workoutState == WorkoutState.paused;
+                  
+                  return CircularStartButton(
+                    onPressed: _startWorkout,
+                    isVisible: _currentIndex == 0,
+                    label: isActive ? 'RESUME' : 'START',
+                    icon: isActive ? Icons.play_arrow : Icons.play_arrow,
+                  );
+                },
               ),
             ),
           ),

@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../workout/application/workout_controller.dart';
 import '../../services/share_service.dart';
-import '../../../../core/domain/models/position_sample.dart';
-import 'dart:math' as math;
 import '../widgets/static_carto_map.dart';
 import '../widgets/route_line_painter.dart';
 
@@ -21,18 +19,14 @@ class _SocialGridShareOverlayState
     extends ConsumerState<SocialGridShareOverlay> {
   final GlobalKey _globalKey = GlobalKey();
   int _currentIndex = 0;
-  bool _isCapturing = false;
+  static const Color _purpleAccent = Color(0xFFB58CFF);
 
   void _captureAndShare(bool saveOnly, {bool transparent = false}) async {
-    setState(() => _isCapturing = true);
-
     // Give time for UI to update without BottomSheet if needed
     await Future.delayed(const Duration(milliseconds: 100));
 
     final shareService = ref.read(shareServiceProvider);
     final bytes = await shareService.captureWidget(_globalKey);
-
-    setState(() => _isCapturing = false);
 
     if (bytes != null && mounted) {
       if (saveOnly) {
@@ -319,6 +313,54 @@ class _SocialGridShareOverlayState
     );
   }
 
+  Widget _buildMapLayer(
+    dynamic workout,
+    double centerLat,
+    double centerLng, {
+    required Color routeColor,
+    int zoom = 15,
+    bool showVignette = true,
+  }) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        StaticCartoMap(
+          centerLat: centerLat,
+          centerLng: centerLng,
+          zoom: zoom,
+          isLightMode: false,
+        ),
+        CustomPaint(
+          painter: RouteLinePainter(
+            points: workout.points,
+            drawGrid: false,
+            isLightMode: false,
+            zoom: zoom,
+            accentColor: routeColor,
+          ),
+          child: Container(),
+        ),
+        if (showVignette)
+          IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.15,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.18),
+                    Colors.black.withOpacity(0.42),
+                  ],
+                  stops: const [0.55, 0.8, 1.0],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildTemplateVariant(
     int index,
     dynamic workout,
@@ -343,29 +385,22 @@ class _SocialGridShareOverlayState
       centerLng = (minLng + maxLng) / 2;
     }
 
-    // Shared Map Layer (Dark Mode)
-    final mapLayer = Stack(
-      fit: StackFit.expand,
-      children: [
-        StaticCartoMap(
-          centerLat: centerLat,
-          centerLng: centerLng,
-          isLightMode: false,
-        ),
-        CustomPaint(
-          painter: RouteLinePainter(points: workout.points),
-          child: Container(),
-        ),
-      ],
-    );
-
     switch (index) {
       case 0:
         // Template 1: Classic Glassmorphism Overlay
         return Stack(
           fit: StackFit.expand,
           children: [
-            ClipRRect(borderRadius: BorderRadius.circular(24), child: mapLayer),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: _buildMapLayer(
+                workout,
+                centerLat,
+                centerLng,
+                routeColor: AppTheme.neonCyan,
+                zoom: 15,
+              ),
+            ),
             ClipRRect(
               borderRadius: BorderRadius.circular(24),
               child: BackdropFilter(
@@ -466,7 +501,7 @@ class _SocialGridShareOverlayState
         // Template 2: Minimalist Dark Solid background with Map on Top Half
         return Container(
           decoration: BoxDecoration(
-            color: AppTheme.deepDark,
+            color: const Color(0xFF101019),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: AppTheme.neonCyan.withOpacity(0.3)),
           ),
@@ -478,7 +513,13 @@ class _SocialGridShareOverlayState
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
-                  child: mapLayer,
+                  child: _buildMapLayer(
+                    workout,
+                    centerLat,
+                    centerLng,
+                    routeColor: AppTheme.neonCyan,
+                    zoom: 15,
+                  ),
                 ),
               ),
               Container(height: 2, color: AppTheme.neonCyan),
@@ -570,16 +611,23 @@ class _SocialGridShareOverlayState
         // Template 3: Cyberpunk Vertical Split
         return Container(
           decoration: BoxDecoration(
-            color: AppTheme.surfaceHighlight,
+            color: const Color(0xFF1A1326),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.secondary.withOpacity(0.3)),
+            border: Border.all(color: _purpleAccent.withOpacity(0.55)),
+            boxShadow: [
+              BoxShadow(
+                color: _purpleAccent.withOpacity(0.16),
+                blurRadius: 28,
+                spreadRadius: 1,
+              ),
+            ],
           ),
           child: Row(
             children: [
               Expanded(
-                flex: 2,
+                flex: 1,
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(18, 20, 12, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -588,7 +636,7 @@ class _SocialGridShareOverlayState
                         child: Text(
                           'STRIDE IO',
                           style: TextStyle(
-                            color: AppTheme.secondary,
+                            color: _purpleAccent,
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 4,
@@ -599,7 +647,7 @@ class _SocialGridShareOverlayState
                       _buildMetric(
                         'DISTANCE',
                         '$distKm KM',
-                        color: AppTheme.secondary,
+                        color: _purpleAccent,
                       ),
                       const SizedBox(height: 16),
                       _buildMetric('PACE', paceStr, color: Colors.white),
@@ -609,14 +657,20 @@ class _SocialGridShareOverlayState
                   ),
                 ),
               ),
-              Container(width: 1, color: AppTheme.secondary.withOpacity(0.3)),
+              Container(width: 1, color: _purpleAccent.withOpacity(0.35)),
               Expanded(
-                flex: 3,
+                flex: 4,
                 child: ClipRRect(
                   borderRadius: const BorderRadius.horizontal(
                     right: Radius.circular(24),
                   ),
-                  child: mapLayer,
+                  child: _buildMapLayer(
+                    workout,
+                    centerLat,
+                    centerLng,
+                    routeColor: _purpleAccent,
+                    zoom: 13,
+                  ),
                 ),
               ),
             ],
@@ -627,7 +681,16 @@ class _SocialGridShareOverlayState
         return Stack(
           fit: StackFit.expand,
           children: [
-            ClipRRect(borderRadius: BorderRadius.circular(24), child: mapLayer),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: _buildMapLayer(
+                workout,
+                centerLat,
+                centerLng,
+                routeColor: AppTheme.neonCyan,
+                zoom: 15,
+              ),
+            ),
             Center(
               child: Container(
                 padding: const EdgeInsets.all(24),
@@ -745,8 +808,9 @@ class _SocialGridShareOverlayState
         // Template 6: Polaroid Map Style with static route (no MapLibre to avoid crashes)
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFFF7F3FF),
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _purpleAccent.withOpacity(0.22)),
           ),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           child: Column(
@@ -760,6 +824,7 @@ class _SocialGridShareOverlayState
                       StaticCartoMap(
                         centerLat: centerLat,
                         centerLng: centerLng,
+                        zoom: 14,
                         isLightMode: true,
                       ),
                       CustomPaint(
@@ -767,8 +832,22 @@ class _SocialGridShareOverlayState
                           points: workout.points,
                           drawGrid: false,
                           isLightMode: true,
+                          zoom: 14,
+                          accentColor: _purpleAccent,
                         ),
                         child: Container(),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.white.withOpacity(0.04),
+                              _purpleAccent.withOpacity(0.08),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -818,7 +897,16 @@ class _SocialGridShareOverlayState
         return Stack(
           fit: StackFit.expand,
           children: [
-            ClipRRect(borderRadius: BorderRadius.circular(24), child: mapLayer),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: _buildMapLayer(
+                workout,
+                centerLat,
+                centerLng,
+                routeColor: AppTheme.neonCyan,
+                zoom: 14,
+              ),
+            ),
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
@@ -843,7 +931,7 @@ class _SocialGridShareOverlayState
                   const Text(
                     '12 HEXAGONS',
                     style: TextStyle(
-                      color: AppTheme.secondary,
+                      color: _purpleAccent,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.5,
@@ -911,4 +999,3 @@ class _SocialGridShareOverlayState
     );
   }
 }
-

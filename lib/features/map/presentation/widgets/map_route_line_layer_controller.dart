@@ -12,6 +12,9 @@ class MapRouteLineLayerController {
   static const String currentPosSourceId = 'current-pos-source';
   static const String currentPosGlowLayerId = 'current-pos-glow-layer';
   static const String currentPosLayerId = 'current-pos-layer';
+  static const String presenceSourceId = 'presence-source';
+  static const String presenceLayerId = 'presence-layer';
+
 
   final Duration throttleDuration = const Duration(milliseconds: 800);
   DateTime _lastRouteUpdate = DateTime.fromMillisecondsSinceEpoch(0);
@@ -110,7 +113,26 @@ class MapRouteLineLayerController {
         circleStrokeWidth: 2.0,
       ),
     );
+
+    await _mapController!.addSource(
+      presenceSourceId,
+      GeojsonSourceProperties(data: _emptyRouteGeoJson()),
+    );
+
+    await _mapController!.addLineLayer(
+      presenceSourceId,
+      presenceLayerId,
+      LineLayerProperties(
+        lineColor: '#FFA500', // Orange color for others
+        lineWidth: 3.0,
+        lineOpacity: 0.4,
+        lineDasharray: [2.0, 2.0],
+        lineJoin: 'round',
+        lineCap: 'round',
+      ),
+    );
   }
+
 
   Future<void> updateRoute(List<latlong.LatLng> route) async {
     if (_mapController == null) return;
@@ -169,6 +191,13 @@ class MapRouteLineLayerController {
 
     await _mapController!.setGeoJsonSource(currentPosSourceId, geoJson);
   }
+
+  Future<void> updatePresenceLines(List<List<latlong.LatLng>> lines) async {
+    if (_mapController == null) return;
+    final geoJson = _buildPresenceGeoJson(lines);
+    await _mapController!.setGeoJsonSource(presenceSourceId, geoJson);
+  }
+
 
   Map<String, dynamic> _emptyRouteGeoJson() {
     return {
@@ -291,4 +320,33 @@ class MapRouteLineLayerController {
       ],
     };
   }
+
+  Map<String, dynamic> _buildPresenceGeoJson(List<List<latlong.LatLng>> lines) {
+    if (lines.isEmpty) return _emptyRouteGeoJson();
+
+    return {
+      'type': 'FeatureCollection',
+      'features': lines.map((line) {
+        // Very simple downsampling to improve performance if many lines
+        final step = line.length > 50 ? 5 : 1;
+        final simplified = <latlong.LatLng>[];
+        for (int i = 0; i < line.length; i += step) {
+          simplified.add(line[i]);
+        }
+        if (simplified.last != line.last) simplified.add(line.last);
+
+        return {
+          'type': 'Feature',
+          'properties': {},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': simplified
+                .map((p) => [p.longitude, p.latitude])
+                .toList()
+          }
+        };
+      }).toList(),
+    };
+  }
 }
+

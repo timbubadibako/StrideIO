@@ -2,11 +2,16 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 
-class TopTelemetryBar extends StatelessWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../social/application/presence_provider.dart';
+
+class TopTelemetryBar extends ConsumerWidget {
   const TopTelemetryBar({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPresenceOn = ref.watch(presenceOptInProvider);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -76,17 +81,36 @@ class TopTelemetryBar extends StatelessWidget {
                               fontSize: 16,
                             ),
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.leaderboard,
-                          color: AppTheme.neonCyan,
-                        ),
-                        onPressed: () {},
-                        constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
-                        ),
-                        padding: EdgeInsets.zero,
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isPresenceOn ? Icons.visibility : Icons.visibility_off,
+                              color: isPresenceOn ? AppTheme.neonCyan : Colors.white54,
+                            ),
+                            tooltip: 'Toggle Presence',
+                            onPressed: () {
+                              ref.read(presenceOptInProvider.notifier).toggle();
+                            },
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.leaderboard,
+                              color: AppTheme.neonCyan,
+                            ),
+                            onPressed: () {},
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -143,6 +167,42 @@ class TopTelemetryBar extends StatelessWidget {
                         ),
                       ),
                     ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.neonCyan.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppTheme.neonCyan.withOpacity(0.25),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.sync,
+                            size: 9,
+                            color: AppTheme.neonCyan,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            'SYNC: JUST NOW',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  fontSize: 7,
+                                  color: AppTheme.neonCyan,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.15,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,

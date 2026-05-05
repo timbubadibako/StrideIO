@@ -5,11 +5,15 @@ import '../../../../core/theme/app_theme.dart';
 class CircularStartButton extends StatefulWidget {
   final VoidCallback onPressed;
   final bool isVisible;
+  final String label;
+  final IconData icon;
 
   const CircularStartButton({
     super.key,
     required this.onPressed,
     this.isVisible = true,
+    this.label = 'START',
+    this.icon = Icons.play_arrow,
   });
 
   @override
@@ -86,13 +90,13 @@ class _CircularStartButtonState extends State<CircularStartButton>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.play_arrow, color: AppTheme.deepDark, size: 36),
+              Icon(widget.icon, color: AppTheme.deepDark, size: 36),
               const SizedBox(height: 2),
               Text(
-                'START',
+                widget.label,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: AppTheme.deepDark,
-                  fontSize: 13,
+                  fontSize: widget.label.length > 5 ? 11 : 13,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
                 ),

@@ -8,6 +8,7 @@ import '../../../../core/services/geospatial_service.dart';
 import '../../../../dev/dev_providers.dart';
 import '../../../../dev/fake_location_service.dart';
 import '../../../workout/application/workout_controller.dart';
+import '../../../social/application/presence_provider.dart';
 import 'map_route_line_layer_controller.dart';
 
 class StrideMapView extends ConsumerStatefulWidget {
@@ -165,6 +166,10 @@ class _StrideMapViewState extends ConsumerState<StrideMapView> {
       );
       await _fitRouteBounds(routePoints);
     }
+    
+    final presenceData = ref.read(presenceLinesProvider);
+    final presenceLines = presenceData.map((p) => p.route).toList();
+    await _routeLayerController.updatePresenceLines(presenceLines);
   }
 
   void _generateGrid() {
@@ -251,6 +256,11 @@ class _StrideMapViewState extends ConsumerState<StrideMapView> {
         );
         _fitRouteBounds(route);
       }
+    });
+
+    ref.listen(presenceLinesProvider, (previous, next) {
+      final lines = next.map((p) => p.route).toList();
+      _routeLayerController.updatePresenceLines(lines);
     });
 
     if (fakeActive) {

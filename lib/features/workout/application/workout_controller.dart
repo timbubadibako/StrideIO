@@ -5,6 +5,7 @@ import '../../../core/domain/models/workout_session.dart';
 import '../../../core/domain/models/position_sample.dart';
 import '../../../core/domain/repositories/tracking_source.dart';
 import '../../../core/services/workout_storage_service.dart';
+import '../../../core/services/sync_queue_service.dart';
 import '../../../dev/dev_providers.dart';
 
 final workoutControllerProvider =
@@ -16,6 +17,8 @@ class WorkoutController extends Notifier<WorkoutSession> {
   StreamSubscription<PositionSample>? _positionSub;
   Timer? _timer;
   bool _skipNextDistance = false;
+  DateTime _lastMovementTime = DateTime.now();
+  static const Duration autoPauseThreshold = Duration(seconds: 15);
 
   @override
   WorkoutSession build() {
@@ -42,6 +45,7 @@ class WorkoutController extends Notifier<WorkoutSession> {
     );
 
     _skipNextDistance = false;
+    _lastMovementTime = DateTime.now();
     _startTimer();
     _startPositionSubscription();
   }
@@ -55,6 +59,7 @@ class WorkoutController extends Notifier<WorkoutSession> {
   void resume() {
     state = state.copyWith(state: WorkoutState.running);
     _skipNextDistance = state.points.isNotEmpty;
+    _lastMovementTime = DateTime.now();
     _startTimer();
     _startPositionSubscription(skipNextDistance: _skipNextDistance);
   }
@@ -75,12 +80,35 @@ class WorkoutController extends Notifier<WorkoutSession> {
     state = state.copyWith(ghostMode: !state.ghostMode);
   }
 
+  void updateTitleAndNotes(String title, String notes) {
+    state = state.copyWith(title: title, notes: notes);
+  }
+
+  Future<void> saveAndEnqueueSync() async {
+    // Atomic: write to local DB then enqueue upload
+    await ref.read(workoutStorageServiceProvider).saveWorkout(state);
+    await ref.read(syncQueueServiceProvider).enqueueWorkoutSync(state);
+    
+    // Attempt to process queue immediately if we have connection
+    ref.read(syncQueueServiceProvider).processQueue();
+  }
+
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (state.state == WorkoutState.running) {
         state = state.copyWith(durationSeconds: state.durationSeconds + 1);
         _updateDerivedMetrics();
+
+        // Auto-pause logic
+        if (DateTime.now().difference(_lastMovementTime) > autoPauseThreshold) {
+          pause();
+        }
+
+        // Periodic local save (e.g., every 30 seconds)
+        if (state.durationSeconds % 30 == 0) {
+          ref.read(workoutStorageServiceProvider).saveWorkout(state);
+        }
       }
     });
   }
@@ -114,7 +142,19 @@ class WorkoutController extends Notifier<WorkoutSession> {
           sample.lng,
         );
         newDistance += distance;
+        
+        // Update last movement if we moved a reasonable distance
+        if (distance > 1.0) {
+          _lastMovementTime = DateTime.now();
+        }
       }
+    } else {
+      _lastMovementTime = DateTime.now();
+    }
+
+    // Fallback movement check via speed
+    if (sample.speedMps != null && sample.speedMps! > 0.5) {
+      _lastMovementTime = DateTime.now();
     }
 
     currentPoints.add(sample);

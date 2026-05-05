@@ -5,6 +5,7 @@ import '../widgets/stride_map_view.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../widgets/top_telemetry_bar.dart';
 import '../../application/scanning_state_provider.dart';
+import '../../application/location_permission_provider.dart';
 
 class MapDashboardScreen extends ConsumerStatefulWidget {
   const MapDashboardScreen({super.key});
@@ -107,6 +108,9 @@ class _MapDashboardScreenState extends ConsumerState<MapDashboardScreen> {
               ],
             ),
           ),
+
+          // LAYER 3: Permissions CTA
+          const _PermissionCtaOverlay(),
         ],
       ),
     );
@@ -294,6 +298,90 @@ class _ScanningLabel extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Permission CTA overlay
+class _PermissionCtaOverlay extends ConsumerWidget {
+  const _PermissionCtaOverlay();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final permissionState = ref.watch(locationPermissionProvider);
+
+    if (permissionState == null || permissionState == true) {
+      return const SizedBox.shrink(); // Hide if loading or granted
+    }
+
+    return Positioned(
+      bottom: 120,
+      left: 16,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceHighlight.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.error.withOpacity(0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.error.withOpacity(0.2),
+              blurRadius: 16,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.error.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.location_off, color: AppTheme.error),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'GPS Signal Lost',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Enable location to track your run and claim sectors.',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            ElevatedButton(
+              onPressed: () {
+                ref.read(locationPermissionProvider.notifier).requestPermission();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.error,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('ENABLE'),
+            ),
+          ],
+        ),
       ),
     );
   }

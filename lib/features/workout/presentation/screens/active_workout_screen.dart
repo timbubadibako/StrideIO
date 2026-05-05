@@ -6,13 +6,21 @@ import '../../../../dev/dev_providers.dart';
 import '../../application/workout_controller.dart';
 import '../../../../core/domain/models/workout_session.dart';
 import '../../../map/presentation/widgets/stride_map_view.dart';
+import '../widgets/hold_action_button.dart';
 import 'post_run_summary_screen.dart';
 
-class ActiveWorkoutScreen extends ConsumerWidget {
+class ActiveWorkoutScreen extends ConsumerStatefulWidget {
   const ActiveWorkoutScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ActiveWorkoutScreen> createState() => _ActiveWorkoutScreenState();
+}
+
+class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
+  bool _isPocketMode = false;
+
+  @override
+  Widget build(BuildContext context) {
     final workout = ref.watch(workoutControllerProvider);
     final workoutController = ref.read(workoutControllerProvider.notifier);
 
@@ -39,6 +47,89 @@ class ActiveWorkoutScreen extends ConsumerWidget {
       backgroundColor: AppTheme.background,
       body: Stack(
         children: [
+          // Pocket Mode Overlay
+          if (_isPocketMode)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black,
+                child: SafeArea(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Spacer(),
+                      Text(
+                        distKm,
+                        style: const TextStyle(
+                          fontFamily: 'Space Grotesk',
+                          fontSize: 80,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.neonCyan,
+                        ),
+                      ),
+                      const Text(
+                        'KILOMETERS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                          letterSpacing: 4,
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Column(
+                            children: [
+                              Text(
+                                timeStr,
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const Text('TIME', style: TextStyle(color: Colors.white54)),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(
+                                paceStr,
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const Text('PACE', style: TextStyle(color: Colors.white54)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      HoldActionButton(
+                        onComplete: () {
+                          setState(() {
+                            _isPocketMode = false;
+                          });
+                        },
+                        label: 'HOLD TO UNLOCK',
+                        baseColor: AppTheme.neonCyan,
+                        progressColor: AppTheme.neonCyan.withOpacity(0.3),
+                        textColor: AppTheme.neonCyan,
+                        isOutlined: true,
+                        borderRadius: BorderRadius.circular(30),
+                        height: 56,
+                        width: 240,
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          
+          if (!_isPocketMode)
           // Cyber Grid Background (matching social/profile)
           Positioned.fill(
             child: Opacity(
@@ -47,10 +138,11 @@ class ActiveWorkoutScreen extends ConsumerWidget {
             ),
           ),
 
-          // Foreground Content
-          SafeArea(
-            child: Column(
-              children: [
+          if (!_isPocketMode)
+            // Foreground Content
+            SafeArea(
+              child: Column(
+                children: [
                 // Header - Icon + Text LEFT, Avatars RIGHT
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -62,6 +154,14 @@ class ActiveWorkoutScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.lock_outline, color: Colors.white54),
+                            onPressed: () {
+                              setState(() {
+                                _isPocketMode = true;
+                              });
+                            },
+                          ),
                           Icon(
                             Icons.directions_run,
                             color: AppTheme.neonCyan,
@@ -475,7 +575,9 @@ class ActiveWorkoutScreen extends ConsumerWidget {
 
       // Footer Controls
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Container(
+      floatingActionButton: _isPocketMode 
+          ? null 
+          : Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -564,8 +666,8 @@ class ActiveWorkoutScreen extends ConsumerWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
+                  child: HoldActionButton(
+                    onComplete: () async {
                       await workoutController.end();
                       if (!context.mounted) return;
                       Navigator.pushReplacement(
@@ -575,24 +677,11 @@ class ActiveWorkoutScreen extends ConsumerWidget {
                         ),
                       );
                     },
-                    icon: const Icon(
-                      Icons.stop_circle,
-                      color: AppTheme.deepDark,
-                    ),
-                    label: const Text(
-                      'END RUN',
-                      style: TextStyle(
-                        color: AppTheme.deepDark,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: AppTheme.neonCyan,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    label: 'END RUN',
+                    icon: Icons.stop_circle,
+                    baseColor: AppTheme.neonCyan,
+                    progressColor: Colors.black26,
+                    textColor: AppTheme.deepDark,
                   ),
                 ),
               ],

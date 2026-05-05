@@ -8,12 +8,14 @@ class RouteLinePainter extends CustomPainter {
   final bool drawGrid;
   final bool isLightMode;
   final int zoom;
+  final Color? accentColor;
 
   RouteLinePainter({
     required this.points,
     this.drawGrid = true,
     this.isLightMode = false,
     this.zoom = 15,
+    this.accentColor,
   });
 
   double _lng2pixel(double lon, int z) {
@@ -22,21 +24,26 @@ class RouteLinePainter extends CustomPainter {
 
   double _lat2pixel(double lat, int z) {
     final latRad = lat * math.pi / 180.0;
-    return ((1.0 - math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) / 2.0 * math.pow(2, z) * 256.0);
+    return ((1.0 -
+            math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) /
+        2.0 *
+        math.pow(2, z) *
+        256.0);
   }
 
   @override
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty) return;
 
-    final primaryColor = isLightMode ? AppTheme.deepDark : AppTheme.neonCyan;
+    final primaryColor =
+        accentColor ?? (isLightMode ? AppTheme.deepDark : AppTheme.neonCyan);
 
     // Draw Cyber-Grid background
     if (drawGrid) {
       final gridPaint = Paint()
         ..color = primaryColor.withOpacity(isLightMode ? 0.05 : 0.1)
         ..strokeWidth = 1.0;
-      
+
       for (double i = 0; i < size.width; i += 20) {
         canvas.drawLine(Offset(i, 0), Offset(i, size.height), gridPaint);
       }
@@ -69,7 +76,7 @@ class RouteLinePainter extends CustomPainter {
       final p = points[i];
       final px = _lng2pixel(p.lng, zoom);
       final py = _lat2pixel(p.lat, zoom);
-      
+
       final x = size.width / 2.0 + (px - centerX);
       final y = size.height / 2.0 + (py - centerY);
 
@@ -88,7 +95,7 @@ class RouteLinePainter extends CustomPainter {
     final fillPaint = Paint()
       ..color = primaryColor.withOpacity(isLightMode ? 0.1 : 0.15)
       ..style = PaintingStyle.fill;
-    
+
     canvas.drawPath(fillPath, fillPaint);
 
     final linePaint = Paint()
@@ -97,7 +104,7 @@ class RouteLinePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
-      
+
     // Add glow
     if (!isLightMode) {
       final glowPaint = Paint()

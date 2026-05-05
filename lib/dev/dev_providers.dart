@@ -43,6 +43,16 @@ final devMenuVisibleProvider = Provider<bool>((ref) {
   return ref.watch(appModeProvider) == AppMode.dev;
 });
 
+class SupabaseDevLogEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void toggle(bool value) => state = value;
+}
+
+final supabaseDevLogEnabledProvider = NotifierProvider<SupabaseDevLogEnabledNotifier, bool>(() {
+  return SupabaseDevLogEnabledNotifier();
+});
+
 class UseFakeLocationPrefNotifier extends Notifier<bool> {
   @override
   bool build() {

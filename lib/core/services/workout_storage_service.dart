@@ -12,7 +12,7 @@ class WorkoutStorageService {
   Box<dynamic> get _box => Hive.box(_boxName);
 
   Future<void> saveWorkout(WorkoutSession workout) async {
-    await _box.add({
+    await _box.put(workout.id, {
       'id': workout.id,
       'startedAt': workout.startedAt.toIso8601String(),
       'endedAt': workout.endedAt?.toIso8601String(),
@@ -23,6 +23,8 @@ class WorkoutStorageService {
       'caloriesEstimate': workout.caloriesEstimate,
       'ghostMode': workout.ghostMode,
       'source': workout.source,
+      'title': workout.title,
+      'notes': workout.notes,
       'points': workout.points.map((point) => point.toJson()).toList(),
     });
   }

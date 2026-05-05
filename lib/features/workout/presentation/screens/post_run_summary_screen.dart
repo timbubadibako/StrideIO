@@ -2,24 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:ui';
 import 'package:skeletonizer/skeletonizer.dart';
-import 'package:maplibre_gl/maplibre_gl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../ui/state/ui_load_state.dart';
 import '../../../../ui/state/ui_demo_state_providers.dart';
-import '../../../map/presentation/widgets/stride_map_view.dart';
 import '../../application/workout_controller.dart';
 import '../../../social/presentation/screens/social_share_overlay.dart';
 import '../../../social/presentation/widgets/static_carto_map.dart';
 import '../../../social/presentation/widgets/route_line_painter.dart';
 import 'dart:math' as math;
 
-class PostRunSummaryScreen extends ConsumerWidget {
+class PostRunSummaryScreen extends ConsumerStatefulWidget {
   const PostRunSummaryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final uiState = ref.watch(postRunUiStateProvider);
+  ConsumerState<PostRunSummaryScreen> createState() =>
+      _PostRunSummaryScreenState();
+}
+
+class _PostRunSummaryScreenState extends ConsumerState<PostRunSummaryScreen> {
+  late TextEditingController _titleController;
+  late TextEditingController _notesController;
+
+  @override
+  void initState() {
+    super.initState();
     final workout = ref.read(workoutControllerProvider);
+    _titleController = TextEditingController(
+      text: workout.title ?? 'Evening Run',
+    );
+    _notesController = TextEditingController(text: workout.notes);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uiState = ref.watch(postRunUiStateProvider);
+    final workout = ref.watch(
+      workoutControllerProvider,
+    ); // Use watch so it updates if state changes
     final isLoading = uiState == UiLoadState.loading;
 
     // Formatting
@@ -59,12 +85,17 @@ class PostRunSummaryScreen extends ConsumerWidget {
     final centerLng = (minLng + maxLng) / 2;
 
     int zoom = 15;
-    double _lng2pixel(double lon, int z) => ((lon + 180.0) / 360.0 * math.pow(2, z) * 256.0);
+    double _lng2pixel(double lon, int z) =>
+        ((lon + 180.0) / 360.0 * math.pow(2, z) * 256.0);
     double _lat2pixel(double lat, int z) {
       final latRad = lat * math.pi / 180.0;
-      return ((1.0 - math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) / 2.0 * math.pow(2, z) * 256.0);
+      return ((1.0 -
+              math.log(math.tan(latRad) + 1.0 / math.cos(latRad)) / math.pi) /
+          2.0 *
+          math.pow(2, z) *
+          256.0);
     }
-    
+
     double minX = _lng2pixel(minLng, zoom);
     double maxX = _lng2pixel(maxLng, zoom);
     double minY = _lat2pixel(maxLat, zoom);
@@ -109,10 +140,18 @@ class PostRunSummaryScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         GestureDetector(
-                          onTap: () => Navigator.popUntil(
-                            context,
-                            (route) => route.isFirst,
-                          ),
+                          onTap: () {
+                            ref
+                                .read(workoutControllerProvider.notifier)
+                                .updateTitleAndNotes(
+                                  _titleController.text,
+                                  _notesController.text,
+                                );
+                            Navigator.popUntil(
+                              context,
+                              (route) => route.isFirst,
+                            );
+                          },
                           child: Container(
                             width: 40,
                             height: 40,
@@ -148,6 +187,44 @@ class PostRunSummaryScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
 
+                    // Title & Notes Input
+                    TextField(
+                      controller: _titleController,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Workout Title',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _notesController,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                      maxLines: null,
+                      decoration: InputDecoration(
+                        hintText: 'How did it feel?',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
                     // Map View Hero Section
                     Container(
                       height: 200,
@@ -169,7 +246,7 @@ class PostRunSummaryScreen extends ConsumerWidget {
                           children: [
                             // Base dark background
                             Container(color: const Color(0xFF070B11)),
-                            
+
                             // Auto-scaling custom map and route
                             FittedBox(
                               fit: BoxFit.contain,
@@ -211,11 +288,13 @@ class PostRunSummaryScreen extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            
+
                             // Inner shadow/border for depth
                             Container(
                               decoration: BoxDecoration(
-                                border: Border.all(color: AppTheme.neonCyan.withOpacity(0.15)),
+                                border: Border.all(
+                                  color: AppTheme.neonCyan.withOpacity(0.15),
+                                ),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
@@ -381,10 +460,24 @@ class PostRunSummaryScreen extends ConsumerWidget {
                               Navigator.of(context).push(
                                 PageRouteBuilder(
                                   opaque: false,
-                                  pageBuilder: (context, animation, secondaryAnimation) => const SocialGridShareOverlay(),
-                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                    return FadeTransition(opacity: animation, child: child);
-                                  },
+                                  pageBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                      ) => const SocialGridShareOverlay(),
+                                  transitionsBuilder:
+                                      (
+                                        context,
+                                        animation,
+                                        secondaryAnimation,
+                                        child,
+                                      ) {
+                                        return FadeTransition(
+                                          opacity: animation,
+                                          child: child,
+                                        );
+                                      },
                                 ),
                               );
                             },
@@ -434,6 +527,54 @@ class PostRunSummaryScreen extends ConsumerWidget {
                               side: BorderSide(
                                 color: AppTheme.neonCyan.withOpacity(0.3),
                               ),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              ref
+                                  .read(workoutControllerProvider.notifier)
+                                  .updateTitleAndNotes(
+                                    _titleController.text,
+                                    _notesController.text,
+                                  );
+                              await ref
+                                  .read(workoutControllerProvider.notifier)
+                                  .saveAndEnqueueSync();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Workout saved to local DB and queued for sync!',
+                                    ),
+                                    backgroundColor: AppTheme.neonCyan,
+                                  ),
+                                );
+                                Navigator.popUntil(
+                                  context,
+                                  (route) => route.isFirst,
+                                );
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.save,
+                              color: AppTheme.deepDark,
+                            ),
+                            label: const Text(
+                              'SAVE WORKOUT',
+                              style: TextStyle(
+                                color: AppTheme.deepDark,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.neonCyan,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -545,7 +686,8 @@ class ShareTemplateBottomSheet extends StatefulWidget {
   const ShareTemplateBottomSheet({required this.workout, super.key});
 
   @override
-  State<ShareTemplateBottomSheet> createState() => _ShareTemplateBottomSheetState();
+  State<ShareTemplateBottomSheet> createState() =>
+      _ShareTemplateBottomSheetState();
 }
 
 class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
@@ -553,6 +695,7 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
   int selectedFontIndex = 0;
   int selectedColorIndex = 0;
   final PageController _pageController = PageController(viewportFraction: 0.78);
+  static const Color _purpleAccent = Color(0xFFB58CFF);
 
   static const List<String> templateNames = [
     'TEMPLATE 1',
@@ -574,7 +717,7 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
 
   static const List<Color> colorOptions = [
     AppTheme.neonCyan,
-    AppTheme.secondary,
+    _purpleAccent,
     Colors.amber,
     Colors.pinkAccent,
   ];
@@ -600,6 +743,7 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final previewColor = colorOptions[selectedColorIndex];
+    final center = _routeCenter(widget.workout.points);
     return DraggableScrollableSheet(
       initialChildSize: 0.62,
       minChildSize: 0.45,
@@ -628,16 +772,16 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
               Text(
                 'Choose a share template',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Pick one of the ready templates or customize a look with your own font and color.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -677,9 +821,7 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                           children: [
                             Text(
                               templateNames[index],
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -689,12 +831,16 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                             Expanded(
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: AppTheme.surfaceHighlight.withOpacity(0.16),
+                                  color: AppTheme.surfaceHighlight.withOpacity(
+                                    0.16,
+                                  ),
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                                 child: Center(
                                   child: Text(
-                                    index < 7 ? 'Template ${index + 1}' : 'Custom',
+                                    index < 7
+                                        ? 'Template ${index + 1}'
+                                        : 'Custom',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: index < 7
@@ -710,9 +856,8 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                             const SizedBox(height: 14),
                             Text(
                               'Preview your result in PNG format before sharing.',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.white70,
-                                  ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.white70),
                             ),
                           ],
                         ),
@@ -743,9 +888,9 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                 Text(
                   'Custom template',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -754,9 +899,12 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                     final active = selectedFontIndex == index;
                     return Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(right: index < fontNames.length - 1 ? 8 : 0),
+                        padding: EdgeInsets.only(
+                          right: index < fontNames.length - 1 ? 8 : 0,
+                        ),
                         child: ElevatedButton(
-                          onPressed: () => setState(() => selectedFontIndex = index),
+                          onPressed: () =>
+                              setState(() => selectedFontIndex = index),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: active
                                 ? AppTheme.neonCyan
@@ -768,7 +916,9 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                           child: Text(
                             fontName,
                             style: TextStyle(
-                              color: active ? AppTheme.deepDark : Colors.white70,
+                              color: active
+                                  ? AppTheme.deepDark
+                                  : Colors.white70,
                               fontSize: 12,
                             ),
                           ),
@@ -781,9 +931,9 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                 Text(
                   'Accent color',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -793,7 +943,9 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                     return GestureDetector(
                       onTap: () => setState(() => selectedColorIndex = index),
                       child: Container(
-                        margin: EdgeInsets.only(right: index < colorOptions.length - 1 ? 10 : 0),
+                        margin: EdgeInsets.only(
+                          right: index < colorOptions.length - 1 ? 10 : 0,
+                        ),
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
@@ -830,9 +982,7 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceHighlight.withOpacity(0.22),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.08),
-                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -840,52 +990,108 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                     Text(
                       'Preview',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        color: Colors.white70,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Container(
-                      height: 160,
+                      height: 180,
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            previewColor.withOpacity(0.18),
-                            Colors.black.withOpacity(0.35),
-                          ],
+                        border: Border.all(
+                          color: previewColor.withOpacity(0.3),
                         ),
                       ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Text(
-                            'RUN SUMMARY',
-                            style: TextStyle(
-                              color: previewColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                          StaticCartoMap(
+                            centerLat: center.$1,
+                            centerLng: center.$2,
+                            zoom: selectedTemplateIndex == 2 ? 13 : 15,
+                            isLightMode: false,
+                          ),
+                          CustomPaint(
+                            painter: RouteLinePainter(
+                              points: widget.workout.points,
+                              drawGrid: false,
+                              isLightMode: false,
+                              zoom: selectedTemplateIndex == 2 ? 13 : 15,
+                              accentColor: previewColor,
+                            ),
+                            child: Container(),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: Alignment.center,
+                                radius: 1.12,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withOpacity(0.2),
+                                  Colors.black.withOpacity(0.42),
+                                ],
+                                stops: const [0.55, 0.82, 1.0],
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 14),
-                          Text(
-                            '${(widget.workout.distanceMeters / 1000.0).toStringAsFixed(2)} km  •  ${widget.workout.durationSeconds ~/ 60}m',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: fontNames[selectedFontIndex],
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            'Share your victory with a slick template in PNG.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.white70,
+                          Positioned(
+                            left: 16,
+                            top: 16,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  selectedTemplateIndex == 2
+                                      ? 'PURPLE SPLIT'
+                                      : 'RUN SUMMARY',
+                                  style: TextStyle(
+                                    color: previewColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    letterSpacing: 1.2,
+                                  ),
                                 ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${(widget.workout.distanceMeters / 1000.0).toStringAsFixed(2)} km  •  ${widget.workout.durationSeconds ~/ 60}m',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: fontNames[selectedFontIndex],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            right: 16,
+                            bottom: 16,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.42),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: previewColor.withOpacity(0.28),
+                                ),
+                              ),
+                              child: Text(
+                                'PNG PREVIEW',
+                                style: TextStyle(
+                                  color: previewColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -903,7 +1109,9 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                     onTap: () {
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Template PNG downloaded')),
+                        const SnackBar(
+                          content: Text('Template PNG downloaded'),
+                        ),
                       );
                     },
                   ),
@@ -913,7 +1121,9 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
                     onTap: () {
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Sharing to Instagram...')),
+                        const SnackBar(
+                          content: Text('Sharing to Instagram...'),
+                        ),
                       );
                     },
                   ),
@@ -967,6 +1177,26 @@ class _ShareTemplateBottomSheetState extends State<ShareTemplateBottomSheet> {
       },
     );
   }
+
+  (double, double) _routeCenter(List<dynamic> points) {
+    if (points.isEmpty) {
+      return (-6.225014, 106.827143);
+    }
+
+    double minLat = points.first.lat;
+    double maxLat = points.first.lat;
+    double minLng = points.first.lng;
+    double maxLng = points.first.lng;
+
+    for (final point in points) {
+      if (point.lat < minLat) minLat = point.lat;
+      if (point.lat > maxLat) maxLat = point.lat;
+      if (point.lng < minLng) minLng = point.lng;
+      if (point.lng > maxLng) maxLng = point.lng;
+    }
+
+    return ((minLat + maxLat) / 2, (minLng + maxLng) / 2);
+  }
 }
 
 class _ShareActionButton extends StatelessWidget {
@@ -1003,9 +1233,9 @@ class _ShareActionButton extends StatelessWidget {
                 label,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.white70,
-                      fontSize: 11,
-                    ),
+                  color: Colors.white70,
+                  fontSize: 11,
+                ),
               ),
             ],
           ),

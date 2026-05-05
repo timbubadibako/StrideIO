@@ -14,6 +14,8 @@ class WorkoutSession {
   final double caloriesEstimate;
   final bool ghostMode;
   final String source;
+  final String? title;
+  final String? notes;
   final List<PositionSample> points;
 
   WorkoutSession({
@@ -28,6 +30,8 @@ class WorkoutSession {
     this.caloriesEstimate = 0.0,
     this.ghostMode = false,
     this.source = 'phoneGps',
+    this.title,
+    this.notes,
     List<PositionSample>? points,
   }) : points = List.unmodifiable(points ?? const []);
 
@@ -44,6 +48,8 @@ class WorkoutSession {
     double? avgPaceSecondsPerKm,
     double? caloriesEstimate,
     bool? ghostMode,
+    String? title,
+    String? notes,
     List<PositionSample>? points,
   }) {
     return WorkoutSession(
@@ -58,6 +64,8 @@ class WorkoutSession {
       caloriesEstimate: caloriesEstimate ?? this.caloriesEstimate,
       ghostMode: ghostMode ?? this.ghostMode,
       source: source,
+      title: title ?? this.title,
+      notes: notes ?? this.notes,
       points: points ?? this.points,
     );
   }

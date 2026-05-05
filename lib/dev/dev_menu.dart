@@ -267,6 +267,26 @@ class _DevMenuState extends ConsumerState<DevMenu> {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          _sectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Network Overlays',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _debugToggle(
+                  'Supabase Connection Logs',
+                  ref.watch(supabaseDevLogEnabledProvider),
+                  (value) async {
+                    ref.read(supabaseDevLogEnabledProvider.notifier).toggle(value);
+                  },
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

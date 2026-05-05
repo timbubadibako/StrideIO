@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SocialScreen extends StatelessWidget {
+import '../../../../core/theme/app_theme.dart';
+import '../../application/presence_provider.dart';
+
+class SocialScreen extends ConsumerWidget {
   const SocialScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPublicPresenceEnabled = ref.watch(presenceOptInProvider);
+    final presenceLines = ref.watch(presenceLinesProvider);
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: Stack(
         children: [
-          // Cyber Grid Background
           Positioned.fill(
             child: Opacity(
               opacity: 0.1,
               child: CustomPaint(painter: CyberGridPainter()),
             ),
           ),
-          
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
@@ -26,50 +30,70 @@ class SocialScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 20),
                   Text(
-                    'PARTY HUB',
+                    'SOCIAL GRID',
                     style: Theme.of(context).textTheme.displayMedium?.copyWith(
                       color: AppTheme.neonCyan,
                       shadows: [
-                        Shadow(color: AppTheme.neonCyan.withOpacity(0.5), blurRadius: 10),
+                        Shadow(
+                          color: AppTheme.neonCyan.withOpacity(0.5),
+                          blurRadius: 10,
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Connect with nearby operatives and dominate the grid.',
+                    'Public presence and local party preview.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 24),
-                  
-                  // Sync Code Card
                   _buildGlassCard(
                     context,
-                    child: Column(
+                    child: Row(
                       children: [
-                        Text('SYNC CODE', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.white70)),
-                        const Divider(color: Colors.white10),
-                        const SizedBox(height: 16),
-                        Container(
-                          width: 150,
-                          height: 150,
-                          color: Colors.white, // Dummy QR
-                          child: const Icon(Icons.qr_code_2, size: 100, color: Colors.black),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {},
-                            child: const Text('SCAN TO JOIN'),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PRESENCE',
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(color: Colors.white70),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                isPublicPresenceEnabled ? 'VISIBLE' : 'HIDDEN',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      color: isPublicPresenceEnabled
+                                          ? Colors.greenAccent
+                                          : Colors.white54,
+                                    ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isPublicPresenceEnabled
+                                    ? 'Your coarse presence is being published to Supabase.'
+                                    : 'Turn on public presence to sync a coarse line to Supabase.',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: Colors.white54),
+                              ),
+                            ],
                           ),
+                        ),
+                        const SizedBox(width: 16),
+                        Switch(
+                          value: isPublicPresenceEnabled,
+                          onChanged: (_) =>
+                              ref.read(presenceOptInProvider.notifier).toggle(),
+                          activeColor: AppTheme.neonCyan,
                         ),
                       ],
                     ),
                   ),
-                  
                   const SizedBox(height: 24),
-                  
-                  // Local Lobby
                   _buildGlassCard(
                     context,
                     child: Column(
@@ -80,62 +104,104 @@ class SocialScreen extends StatelessWidget {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.radar, color: AppTheme.neonCyan),
+                                const Icon(
+                                  Icons.radar,
+                                  color: AppTheme.neonCyan,
+                                ),
                                 const SizedBox(width: 8),
-                                Text('LOCAL LOBBY', style: Theme.of(context).textTheme.labelLarge),
+                                Text(
+                                  'PRESENCE PREVIEW',
+                                  style: Theme.of(context).textTheme.labelLarge,
+                                ),
                               ],
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppTheme.neonCyan.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '3 ONLINE',
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 10, color: AppTheme.neonCyan),
-                              ),
+                            _buildStatusChip(
+                              context,
+                              '${presenceLines.length} LINES',
+                              presenceLines.isEmpty
+                                  ? Colors.white54
+                                  : AppTheme.secondary,
                             ),
                           ],
                         ),
                         const Divider(color: Colors.white10),
                         const SizedBox(height: 8),
-                        _buildLobbyUser(context, 'Valkyrie_99', 'Level 42 • Vector', Colors.blue),
-                        const SizedBox(height: 8),
-                        _buildLobbyUser(context, 'Kael_Striker', 'Level 38 • Crimson', AppTheme.error),
+                        if (!isPublicPresenceEnabled)
+                          const Text(
+                            'Enable presence to see public previews here.',
+                            style: TextStyle(color: Colors.white54),
+                          )
+                        else if (presenceLines.isEmpty)
+                          const Text(
+                            'No public presence detected yet.',
+                            style: TextStyle(color: Colors.white54),
+                          )
+                        else
+                          Column(
+                            children: [
+                              for (final line in presenceLines)
+                                _buildPresenceCard(
+                                  context,
+                                  userId: line.userId,
+                                  routePoints: line.route.length,
+                                  color: AppTheme.neonCyan,
+                                ),
+                            ],
+                          ),
                       ],
                     ),
                   ),
-                  
                   const SizedBox(height: 24),
-                  
-                  // Faction Leaderboard
                   _buildGlassCard(
                     context,
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.emoji_events, color: AppTheme.secondary),
+                            const Icon(
+                              Icons.emoji_events,
+                              color: AppTheme.secondary,
+                            ),
                             const SizedBox(width: 8),
-                            Text('FACTION RANKS', style: Theme.of(context).textTheme.labelLarge),
+                            Text(
+                              'PARTY PREVIEW',
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
                           ],
                         ),
                         const Divider(color: Colors.white10),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Party join/create flows are still pending backend wiring. This screen now focuses on presence and social sync state.',
+                          style: TextStyle(color: Colors.white54),
+                        ),
                         const SizedBox(height: 16),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            Expanded(child: _buildRankItem(context, 'Neon_Ghost', '12,450', 1, AppTheme.neonCyan)),
-                            Expanded(child: _buildRankItem(context, 'Xeno_Blaze', '11,200', 2, AppTheme.error)),
-                            Expanded(child: _buildRankItem(context, 'Aura_Volt', '10,850', 3, AppTheme.secondary)),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: null,
+                                child: const Text('CREATE PARTY'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: null,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white54,
+                                  side: const BorderSide(color: Colors.white24),
+                                ),
+                                child: const Text('JOIN BY CODE'),
+                              ),
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  
-                  const SizedBox(height: 100), // padding for bottom nav
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
@@ -153,79 +219,77 @@ class SocialScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.1)),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 10,
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 10),
         ],
       ),
       child: child,
     );
   }
 
-  Widget _buildLobbyUser(BuildContext context, String name, String subtitle, Color color) {
+  Widget _buildStatusChip(BuildContext context, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppTheme.surface.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.35)),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: AppTheme.surfaceHighlight,
-            child: Icon(Icons.person, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16)),
-                Text(subtitle, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12)),
-              ],
-            ),
-          ),
-          OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.neonCyan,
-              side: const BorderSide(color: AppTheme.neonCyan),
-            ),
-            child: const Text('JOIN', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          letterSpacing: 1.4,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
-  Widget _buildRankItem(BuildContext context, String name, String score, int rank, Color color) {
-    return Column(
-      children: [
-        Stack(
-          alignment: Alignment.topLeft,
+  Widget _buildPresenceCard(
+    BuildContext context, {
+    required String userId,
+    required int routePoints,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.surface.withOpacity(0.45),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
+        ),
+        child: Row(
           children: [
             CircleAvatar(
-              radius: 24,
-              backgroundColor: AppTheme.surface,
-              child: Icon(Icons.person, color: color, size: 28),
+              backgroundColor: color.withOpacity(0.15),
+              child: Icon(Icons.person, color: color),
             ),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceHighlight,
-                shape: BoxShape.circle,
-                border: Border.all(color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    userId,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: Colors.white),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$routePoints route points shared',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ],
               ),
-              child: Text('#$rank', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10)),
             ),
+            _buildStatusChip(context, 'LIVE', color),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(name, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 14), overflow: TextOverflow.ellipsis),
-        Text('$score PTS', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
-      ],
+      ),
     );
   }
 }
