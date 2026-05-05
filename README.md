@@ -1,74 +1,95 @@
-# 🏃‍♂️ StrideIO
+# 🏃‍♂️ StrideIO — Run. Capture. Conquer.
 
-StrideIO is a next-generation, cyberpunk-themed GPS running and activity tracking application built with Flutter. Unlike traditional fitness trackers, StrideIO gamifies your physical activities by allowing you to "capture" geographical territories (Hexagons) in the real world while tracking your telemetry.
+StrideIO adalah aplikasi pelacakan lari dan aktivitas bertema cyberpunk yang dibangun dengan Flutter. Bayangkan Strava, lalu tambahkan elemen game: kamu bisa "merebut" kotak-kotak wilayah (hex tiles) di dunia nyata saat berlari. Aplikasi ini memadukan telemetri serius dengan game mechanics ringan — cocok untuk yang suka lari sekaligus main strategi lokasi.
 
----
-
-## ✨ Features
-
-- **📍 Live GPS Tracking & Telemetry**: Monitor your real-time distance, average pace, duration, and calories burned over an interactive MapLibre map layer.
-- **⬡ Hex Grid Domination**: Utilizes Uber's H3 spatial index to overlay the world with hexagonal territories. Run through them to claim tiles and earn "Faction Points."
-- **👻 Ghost Mode**: Need a break but don't want to stop the tracker? Ghost mode lets you pause and reposition without drawing ugly straight lines across the map.
-- **🗺️ Auto-Scaling Post-Run Summary**: View your entire captured route in a beautiful, auto-fitting map hero widget utilizing CartoDB static tiles, neon route painters, and a premium vignette shadow overlay.
-- **📸 Social Grid Sharing**: Generate stunning, pixel-perfect social media stories of your workout.
-  - Choose from 7 highly-customizable, dynamic Cyber-Grid templates.
-  - Features real Web Mercator map projection logic to perfectly trace your route over dark/light mode maps.
-  - Export seamlessly to Instagram, WhatsApp, Strava, or save directly to your gallery via `gal` & `share_plus`.
+> Tagline: "Run the map. Capture the grid. Play the city."
 
 ---
 
-## 🛠️ Technology Stack
-
-- **Framework**: Flutter (Dart)
-- **State Management**: Riverpod (`flutter_riverpod`)
-- **Maps & Geolocation**: MapLibre GL, `h3_flutter`, `latlong2`, `geolocator`
-- **Local Storage**: Hive (`hive`, `hive_flutter`), SharedPreferences
-- **Media & Export**: `gal` (Gallery saver), `share_plus`, `path_provider`, `permission_handler`
+## ✨ Mengapa StrideIO?
+- Kita rekam lari layaknya Strava: GPS, jarak, pace, durasi, dan ringkasan setelah lari.
+- Bedanya: setiap langkahmu punya makna game — kamu bisa mengklaim area (H3 hex) untuk faction-mu.
+- Fokus UX: dark cyber/neon theme, polish visual, dan social sharing yang eye-catching.
 
 ---
 
-## 💻 Dev GPS
-
-StrideIO includes a hidden Dev Menu for fake GPS simulation, highly useful for testing mapping functionality from a desk.
-
-### How to open it:
-
-1. Run the app in debug mode.
-2. Open the Profile tab.
-3. Long-press the small version footer at the bottom of the page.
-
-### What you can do there:
-
-- Toggle fake GPS on or off.
-- Edit fake route config like center, loop distance, duration, and sample interval.
-- Start or stop the fake GPS stream.
-- Apply presets like 5km / 30min, 5km / 5min, and 1km walk.
-
-### Release safety:
-
-- Fake GPS is disabled by default.
-- In release builds, the Dev Menu stays hidden unless you build with a compile-time flag.
-- Use `--dart-define=STRIDEIO_ALLOW_DEV_MENU=true` and `--dart-define=STRIDEIO_ALLOW_FAKE_GPS=true` only for internal builds.
-
-### Verification checklist:
-
-- Toggle persists after app restart.
-- Fake mode shows `DEV: Fake GPS active` on the workout screen.
-- Active workout route line moves when the fake stream is on.
-- Toggling off restores the real location source.
+## Fitur unggulan (highlight)
+- 📍 Live GPS Tracking & Telemetry (MapLibre)
+  - Real-time distance, pace, elapsed time, dan visual route polyline.
+- ⬡ Hex Grid Domination (H3)
+  - Lewati hex untuk jadi calon klaim; nanti server akan memvalidasi klaim-area.
+- 👻 Ghost Mode
+  - Rekam tanpa mempublikasi / tanpa klaim wilayah.
+- 🗺️ Auto-fitting Post-Run Summary
+  - Map hero, filled polygon untuk loop tertutup, dan stat cards.
+- 📸 Social Grid Sharing
+  - 7 templated share images (cyber-grid) yang bisa langsung ke Instagram/WhatsApp/Strava.
+- 🧪 Dev Tools: Fake GPS (Dev Menu)
+  - Simulasi loop (5km/30min dll) untuk QA tanpa keluar rumah.
 
 ---
 
-## 🚀 Getting Started
+## Quick start (dev)
+1. Clone:
+   git clone git@github.com:timbubadibako/StrideIO.git
+2. Install:
+   flutter pub get
+3. Run debug:
+   flutter run
+4. Dev menu & fake GPS:
+   - Buka app di mode debug → Profile tab → Long-press versi footer → Dev Menu
+   - Toggle `Fake GPS` untuk simulasi loop (default OFF)
+   - Untuk internal builds: gunakan --dart-define=STRIDEIO_ALLOW_DEV_MENU=true
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## Architecture overview (singkat)
+- Flutter + Riverpod (state management)
+- Map: MapLibre GL
+- Geospatial: h3_flutter + latlong2
+- Storage: Hive + SharedPreferences
+- Share/export: share_plus, image export utilities
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## UX notes (penting untuk contributor)
+- HUD-first: top app bar edge-to-edge; telemetri sebagai HUD card; START CTA dipisah dari nav
+- Map updates harus di-throttle (800–1500ms) untuk performa.
+- Keep raw GPS points for analytics; use encoded polyline for uploads/previews.
+
+---
+
+## Dev & QA tools
+- FakeLocationService (dev): generate loop runs, configurable (center, distance, duration, sample rate).
+- Dev overlay: show sampleRate, lastAccuracy, pending upload queue length.
+- GPX replay helper for emulator testing.
+
+---
+
+## Roadmap (singkat)
+- MVP complete: Dashboard, Active run, Post-run summary, Share (7 templates) — DONE
+- Next: Social (Party, QR sync, presence), Profile finish, Server claim RPC + PostGIS validation
+- Later: Anti-cheat, wearables, realtime presence filters
+
+---
+
+## Contributing
+- Buat branch: feat/your-feature
+- Ikuti Conventional Commits (feat/fix/docs/chore)
+- Tambahkan test untuk logic kritikal (distance, resume-skip, polyline encode)
+- Kembangkan di dev mode (fake GPS) untuk cepat iterasi UI & map
+
+---
+
+## Privacy & safety
+- Ghost mode & presence opt-out by default.
+- Fake GPS locked behind dev toggle; disabled in release builds unless a compile-time flag is set.
+- Tokens (Strava, etc.) must be stored in secure storage; no PII in logs.
+
+---
+
+## Need help?
+- Untuk request fitur atau bug: buka issue di GitHub.
+- Untuk permintaan checklist/PR generation otomatis, mention @timbubadibako di issue.
+
+Have fun — run the city. Capture the grid.
