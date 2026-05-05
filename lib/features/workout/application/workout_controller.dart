@@ -4,12 +4,8 @@ import 'package:geolocator/geolocator.dart'; // For distance calculation
 import '../../../core/domain/models/workout_session.dart';
 import '../../../core/domain/models/position_sample.dart';
 import '../../../core/domain/repositories/tracking_source.dart';
-import '../../../core/services/location_service.dart';
 import '../../../core/services/workout_storage_service.dart';
-
-final trackingSourceProvider = Provider<TrackingSource>((ref) {
-  return LocationService();
-});
+import '../../../dev/dev_providers.dart';
 
 final workoutControllerProvider =
     NotifierProvider<WorkoutController, WorkoutSession>(() {
@@ -61,6 +57,11 @@ class WorkoutController extends Notifier<WorkoutSession> {
     _skipNextDistance = state.points.isNotEmpty;
     _startTimer();
     _startPositionSubscription(skipNextDistance: _skipNextDistance);
+  }
+
+  void refreshTrackingSource() {
+    if (state.state != WorkoutState.running) return;
+    _startPositionSubscription(skipNextDistance: true);
   }
 
   Future<void> end() async {

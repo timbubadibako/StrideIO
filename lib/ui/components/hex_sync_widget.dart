@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:skeletonizer/skeletonizer.dart';
-import 'package:skeletonizer/skeletonizer.dart';
 
 class HexSyncWidget extends StatelessWidget {
   final int syncPercentage;

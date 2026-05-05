@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../dev/dev_providers.dart';
 import '../../application/workout_controller.dart';
 import '../../../../core/domain/models/workout_session.dart';
 import '../../../map/presentation/widgets/stride_map_view.dart';
@@ -31,30 +32,18 @@ class ActiveWorkoutScreen extends ConsumerWidget {
 
     // Heart rate (Mock for now)
     final bpm = workout.state == WorkoutState.running ? '164' : '---';
+    final fakeGpsActive = ref.watch(fakeLocationActiveProvider);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: AppTheme.background,
       body: Stack(
         children: [
-          // Background Map Layer
-          Positioned.fill(child: const StrideMapView()),
-
-          // Gradient Overlay to make text readable (subtle, not transparent)
+          // Cyber Grid Background (matching social/profile)
           Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppTheme.background.withOpacity(0.95),
-                    AppTheme.background.withOpacity(0.85),
-                    AppTheme.background.withOpacity(0.98),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ),
-              ),
+            child: Opacity(
+              opacity: 0.1,
+              child: CustomPaint(painter: CyberGridPainter()),
             ),
           ),
 
@@ -340,20 +329,22 @@ class ActiveWorkoutScreen extends ConsumerWidget {
 
                         const SizedBox(height: 24),
 
-                        // Territory Acquired Widget
+                        // Territory Claim Widget
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceHighlight.withOpacity(0.6),
+                            color: AppTheme.surfaceHighlight.withOpacity(0.78),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border(
-                              top: BorderSide(
-                                color: Colors.white.withOpacity(0.1),
-                              ),
-                              left: BorderSide(
-                                color: Colors.white.withOpacity(0.05),
-                              ),
+                            border: Border.all(
+                              color: AppTheme.secondary.withOpacity(0.22),
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.secondary.withOpacity(0.14),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,35 +353,55 @@ class ActiveWorkoutScreen extends ConsumerWidget {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                  Row(
                                     children: [
-                                      Text(
-                                        'TERRITORY ACQUIRED',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelLarge
-                                            ?.copyWith(
-                                              color: AppTheme.secondary,
-                                              shadows: [
-                                                Shadow(
-                                                  color: AppTheme.secondary
-                                                      .withOpacity(0.5),
-                                                  blurRadius: 10,
-                                                ),
-                                              ],
-                                            ),
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.secondary.withOpacity(
+                                            0.12,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.flag_rounded,
+                                          color: AppTheme.secondary,
+                                          size: 18,
+                                        ),
                                       ),
-                                      Text(
-                                        'Sectors claimed this session',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyMedium
-                                            ?.copyWith(
-                                              fontSize: 12,
-                                              color: Colors.white70,
-                                            ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'TERRITORY CLAIM',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelLarge
+                                                ?.copyWith(
+                                                  color: AppTheme.secondary,
+                                                  shadows: [
+                                                    Shadow(
+                                                      color: AppTheme.secondary
+                                                          .withOpacity(0.5),
+                                                      blurRadius: 10,
+                                                    ),
+                                                  ],
+                                                ),
+                                          ),
+                                          Text(
+                                            'Sectors claimed this session',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                  fontSize: 12,
+                                                  color: Colors.white70,
+                                                ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -423,6 +434,42 @@ class ActiveWorkoutScreen extends ConsumerWidget {
               ],
             ),
           ),
+
+          if (fakeGpsActive)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 12,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceHighlight.withOpacity(0.78),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppTheme.neonCyan.withOpacity(0.22),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.neonCyan.withOpacity(0.08),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    'DEV: Fake GPS active',
+                    style: TextStyle(
+                      color: Color(0xFF00F5FF),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
 
@@ -472,7 +519,7 @@ class ActiveWorkoutScreen extends ConsumerWidget {
                     onChanged: (val) {
                       workoutController.toggleGhostMode();
                     },
-                    activeColor: AppTheme.secondary,
+                    activeThumbColor: AppTheme.secondary,
                     activeTrackColor: AppTheme.surfaceHighlight,
                   ),
                 ],
@@ -579,82 +626,98 @@ class ActiveWorkoutScreen extends ConsumerWidget {
   }) {
     print('DEBUG: Panel=$title, Value=$value, Unit=$unit');
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceHighlight.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.neonCyan.withOpacity(0.2), width: 1),
-        boxShadow: [
-          BoxShadow(color: AppTheme.neonCyan.withOpacity(0.1), blurRadius: 12),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 14, color: AppTheme.neonCyan),
-                  const SizedBox(width: 6),
-                  Text(
-                    title.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceHighlight.withOpacity(0.72),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppTheme.neonCyan.withOpacity(0.18),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.neonCyan.withOpacity(0.08),
+                blurRadius: 14,
+                spreadRadius: 0.2,
               ),
-              if (isAlert)
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppTheme.error,
-                  ),
-                ),
             ],
           ),
-
-          // Value + Unit (ALWAYS VISIBLE)
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  value.isEmpty ? '00.00' : value,
-                  style: const TextStyle(
-                    fontFamily: 'Space Grotesk',
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF00F5FF), // Hardcode cyan
-                    fontSize: 32,
-                    height: 1.0,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, size: 14, color: AppTheme.neonCyan),
+                      const SizedBox(width: 6),
+                      Text(
+                        title.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                if (unit.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    unit,
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400,
+                  if (isAlert)
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.error,
+                      ),
                     ),
-                  ),
                 ],
-              ],
-            ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        value.isEmpty ? '00.00' : value,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: const TextStyle(
+                          fontFamily: 'Space Grotesk',
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF00F5FF),
+                          fontSize: 32,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                    if (unit.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        unit,
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

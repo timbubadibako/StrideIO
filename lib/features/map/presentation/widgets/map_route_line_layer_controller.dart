@@ -1,11 +1,16 @@
 import 'package:latlong2/latlong.dart' as latlong;
+import 'package:geolocator/geolocator.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 class MapRouteLineLayerController {
   static const String routeSourceId = 'route-source';
+  static const String territorySourceId = 'territory-source';
   static const String routeGlowLayerId = 'route-glow-layer';
   static const String routeCoreLayerId = 'route-core-layer';
+  static const String territoryFillLayerId = 'territory-fill-layer';
+  static const String territoryOutlineLayerId = 'territory-outline-layer';
   static const String currentPosSourceId = 'current-pos-source';
+  static const String currentPosGlowLayerId = 'current-pos-glow-layer';
   static const String currentPosLayerId = 'current-pos-layer';
 
   final Duration throttleDuration = const Duration(milliseconds: 800);
@@ -22,6 +27,33 @@ class MapRouteLineLayerController {
   Future<void> initialize() async {
     if (_initialized || _mapController == null) return;
     _initialized = true;
+
+    await _mapController!.addSource(
+      territorySourceId,
+      GeojsonSourceProperties(data: _emptyTerritoryGeoJson()),
+    );
+
+    await _mapController!.addFillLayer(
+      territorySourceId,
+      territoryFillLayerId,
+      FillLayerProperties(
+        fillColor: '#00F5FF',
+        fillOpacity: 0.20,
+        fillOutlineColor: '#00F5FF',
+      ),
+    );
+
+    await _mapController!.addLineLayer(
+      territorySourceId,
+      territoryOutlineLayerId,
+      LineLayerProperties(
+        lineColor: '#00F5FF',
+        lineWidth: 1.0,
+        lineOpacity: 0.18,
+        lineJoin: 'round',
+        lineCap: 'round',
+      ),
+    );
 
     await _mapController!.addSource(
       routeSourceId,
@@ -59,6 +91,16 @@ class MapRouteLineLayerController {
 
     await _mapController!.addCircleLayer(
       currentPosSourceId,
+      currentPosGlowLayerId,
+      CircleLayerProperties(
+        circleColor: '#00F5FF',
+        circleRadius: 14.0,
+        circleOpacity: 0.16,
+      ),
+    );
+
+    await _mapController!.addCircleLayer(
+      currentPosSourceId,
       currentPosLayerId,
       CircleLayerProperties(
         circleColor: '#00F5FF',
@@ -80,6 +122,18 @@ class MapRouteLineLayerController {
     await _mapController!.setGeoJsonSource(routeSourceId, geoJson);
   }
 
+  Future<void> updateTerritoryPolygon(
+    List<latlong.LatLng> route, {
+    double closeToleranceMeters = 25.0,
+  }) async {
+    if (_mapController == null) return;
+
+    final geoJson = _isTerritoryClosed(route, closeToleranceMeters)
+        ? _buildTerritoryGeoJson(route)
+        : _emptyTerritoryGeoJson();
+    await _mapController!.setGeoJsonSource(territorySourceId, geoJson);
+  }
+
   Future<void> updateCurrentPosition(latlong.LatLng position) async {
     if (_mapController == null) return;
     final now = DateTime.now();
@@ -87,6 +141,32 @@ class MapRouteLineLayerController {
     _lastPositionUpdate = now;
 
     final geoJson = _buildPointGeoJson(position);
+    await _mapController!.setGeoJsonSource(currentPosSourceId, geoJson);
+  }
+
+  Future<void> updateRunnerMarker(
+    latlong.LatLng position, {
+    double? bearingDeg,
+  }) async {
+    if (_mapController == null) return;
+    final now = DateTime.now();
+    if (now.difference(_lastPositionUpdate) < throttleDuration) return;
+    _lastPositionUpdate = now;
+
+    final geoJson = {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'properties': {'bearing': bearingDeg ?? 0.0, 'kind': 'runner'},
+          'geometry': {
+            'type': 'Point',
+            'coordinates': [position.longitude, position.latitude],
+          },
+        },
+      ],
+    };
+
     await _mapController!.setGeoJsonSource(currentPosSourceId, geoJson);
   }
 
@@ -116,6 +196,65 @@ class MapRouteLineLayerController {
                 .map((point) => [point.longitude, point.latitude])
                 .toList(),
           },
+        },
+      ],
+    };
+  }
+
+  bool _isTerritoryClosed(
+    List<latlong.LatLng> route,
+    double closeToleranceMeters,
+  ) {
+    if (route.length < 3) return false;
+
+    final first = route.first;
+    final last = route.last;
+    final gapMeters = Geolocator.distanceBetween(
+      first.latitude,
+      first.longitude,
+      last.latitude,
+      last.longitude,
+    );
+
+    return gapMeters <= closeToleranceMeters;
+  }
+
+  Map<String, dynamic> _buildTerritoryGeoJson(List<latlong.LatLng> route) {
+    final ring = route
+        .map((point) => [point.longitude, point.latitude])
+        .toList();
+
+    if (ring.isNotEmpty) {
+      final first = ring.first;
+      final last = ring.last;
+      if (first[0] != last[0] || first[1] != last[1]) {
+        ring.add([first[0], first[1]]);
+      }
+    }
+
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'properties': {'kind': 'territory'},
+          'geometry': {
+            'type': 'Polygon',
+            'coordinates': [ring],
+          },
+        },
+      ],
+    };
+  }
+
+  Map<String, dynamic> _emptyTerritoryGeoJson() {
+    return {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'properties': {},
+          'geometry': {'type': 'Polygon', 'coordinates': []},
         },
       ],
     };

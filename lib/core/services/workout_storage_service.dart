@@ -33,4 +33,8 @@ class WorkoutStorageService {
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
+
+  Future<void> clearAllWorkouts() async {
+    await _box.clear();
+  }
 }

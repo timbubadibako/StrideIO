@@ -23,6 +23,26 @@ class CustomLocationMarker extends StatefulWidget {
   State<CustomLocationMarker> createState() => _CustomLocationMarkerState();
 }
 
+class RunningCharacterMarker extends StatelessWidget {
+  final double size;
+  final bool isAnimating;
+
+  const RunningCharacterMarker({
+    super.key,
+    this.size = 40,
+    this.isAnimating = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomLocationMarker(
+      size: size,
+      showHeadingCone: false,
+      isAnimating: isAnimating,
+    );
+  }
+}
+
 class _CustomLocationMarkerState extends State<CustomLocationMarker>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
